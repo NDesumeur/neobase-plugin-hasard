@@ -1,0 +1,16 @@
+{
+  "id": "neobase.hasard",
+  "name": "Hasard",
+  "version": "1.0.0",
+  "author": "NDesumeur",
+  "description": "Roue à choix, dés, pile ou face et tirage de nombre au hasard.",
+  "entry": "index.js",
+  "view": "hasard",
+  "neobase": ">=4.0.0",
+  "type": "app",
+  "category": "Outils",
+  "mobile": true,
+  "system": false,
+  "dependencies": {},
+  "permissions": ["storage"]
+}
