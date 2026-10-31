@@ -1,84 +1,66 @@
-// Hasard, plugin NeoBase autonome (permission « storage » pour garder les choix de la roue, synchronisés).
-const RD_DEFAULT = ['Pizza', 'Sushis', 'Burger', 'Pâtes', 'Tacos', 'Salade'];
-const COLORS = ['#8a5cf0', '#e01ec8', '#7fe0ee', '#ffd07a', '#8ee8a0', '#ff9a3c', '#ff5ad9', '#3b5bdb'];
+// Hasard : ton appli d'origine, reprise telle quelle (HTML et code inchangés), livrée en plugin.
+// Elle demande l'accès complet : elle utilise les outils de NeoBase comme avant. NeoBase ne l'ouvre que si elle est signée.
+const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\"label\">Hasard</span></div>\n      <div class=\"rdMain\">\n        <div class=\"sysCard px rdWheelCard\"><span class=\"label\">Roue</span><canvas id=\"rdWheel\" width=\"320\" height=\"320\" title=\"Clic : tourner\"></canvas><div class=\"rdResult\" id=\"rdResult\">Clique sur la roue</div><button class=\"btn main px\" id=\"rdSpinBtn\">Tourner</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Choix de la roue (un par ligne)</span><textarea class=\"f\" id=\"rdList\" rows=\"10\" spellcheck=\"false\"></textarea></div>\n      </div>\n      <div class=\"sysGrid\">\n        <div class=\"sysCard px\"><span class=\"label\">Dés</span><div class=\"bdPlan\"><select class=\"f\" id=\"rdCount\"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select> dé(s) à <select class=\"f\" id=\"rdFaces\"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option><option>20</option><option>100</option></select> faces</div><div id=\"rdDice\"></div><div class=\"hint\" id=\"rdDiceSum\"></div><button class=\"btn px\" id=\"rdRoll\">Lancer</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Pile ou face</span><div id=\"rdCoin\" class=\"rdCoin\">?</div><div class=\"rdResult\" id=\"rdCoinRes\"></div><button class=\"btn px\" id=\"rdFlip\">Lancer la pièce</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Nombre au hasard</span><div class=\"bdPlan\">De <input class=\"f\" id=\"rdMin\" value=\"1\" inputmode=\"numeric\"> à <input class=\"f\" id=\"rdMax\" value=\"100\" inputmode=\"numeric\"></div><div class=\"rdResult\" id=\"rdNumRes\">—</div><button class=\"btn px\" id=\"rdNum\">Tirer</button></div>\n      </div>\n    </div>";
 export default function (ctx) {
-  const el = ctx.el;
-  let entries = RD_DEFAULT.slice(), angle = 0, spinning = false, saveT = null;
-
-  const S = el('style');
-  S.textContent = `
-    .rd{padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;align-items:start}
-    .rd .card{background:color-mix(in srgb,var(--line,#2a1d52) 35%,var(--bg0,#0b031c));padding:14px;box-shadow:inset 0 0 0 2px var(--line2,#3a2a6e)}
-    .rd .label{font:10px var(--title,monospace);color:var(--muted,#8f7bb8);display:block;margin-bottom:8px}
-    .rd canvas{display:block;margin:0 auto;max-width:100%}
-    .rd textarea{width:100%;min-height:150px;background:color-mix(in srgb,var(--bg0,#0b031c) 70%,#000);color:var(--shell,#fff);border:2px solid var(--line2,#3a2a6e);font:14px var(--text,sans-serif);padding:8px;box-sizing:border-box;outline:0}
-    .rd .res{font:30px var(--title,monospace);color:#fff;text-align:center;margin:8px 0;min-height:30px}
-    .rd button{font:12px var(--title,monospace);color:#fff;border:0;padding:10px 14px;cursor:pointer;background:color-mix(in srgb,var(--violet,#8a5cf0) 70%,#000);box-shadow:inset 0 2px 0 rgba(255,255,255,.2),inset 0 -3px 0 rgba(0,0,0,.35)}
-    .rd button.main{background:color-mix(in srgb,var(--magenta,#e01ec8) 80%,#000)}
-    .rd .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
-    .rd input,.rd select{font:15px var(--text,sans-serif);padding:7px 9px;background:color-mix(in srgb,var(--bg0,#0b031c) 70%,#000);color:#fff;border:2px solid var(--line2,#3a2a6e);width:80px;outline:0}
-    .rd .dice{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0;min-height:44px}
-    .rd .die{width:44px;height:44px;display:grid;place-items:center;background:#f3eaff;color:#130a20;font:20px var(--title,monospace);box-shadow:0 2px 0 rgba(0,0,0,.4)}
-    .rd .coin{width:70px;height:70px;border-radius:50%;background:radial-gradient(#ffe08a,#e0a800);color:#5a3a00;display:grid;place-items:center;font:28px var(--title,monospace);margin:8px auto}`;
-
-  // --- roue ---
-  const cv = el('canvas'); cv.width = cv.height = 260;
-  const pick = el('div', 'res');
-  const list = el('textarea'); list.spellcheck = false;
-  const spinBtn = el('button', 'main', 'TOURNER');
-  const wheelCard = el('div', 'card'); wheelCard.append(el('span', 'label', 'ROUE'), cv, pick, el('span', 'label', 'Tes choix (une ligne chacun)'), list);
-  const wrow = el('div', 'row'); wrow.append(spinBtn); wheelCard.append(wrow);
-  function drawWheel() {
-    const g = cv.getContext('2d'), n = entries.length || 1, r = cv.width / 2 - 8, cx = cv.width / 2;
+  const view = ctx.view;
+  if (typeof el === 'undefined' || typeof neo === 'undefined') { view.textContent = "Ce plugin doit être approuvé par NeoBase pour s'ouvrir."; return; }
+  view.innerHTML = HTML;
+  const $ = id => view.querySelector('#' + id);  // les identifiants de ta vue, sans toucher à ceux du reste de NeoBase
+  // ---- ton code d'origine ----
+  /* ---------- Hasard app: a wheel with your own entries, dice, coin, number and draw ---------- */
+  // the wheel's choices are in the settings (synced); the ones kept on this PC before come along the first time
+  const RD_DEFAULT = ['Pizza', 'Sushis', 'Burger', 'Pâtes', 'Tacos', 'Salade'];
+  let rdEntries = (() => { try { return JSON.parse(localStorage.neoWheel); } catch { return null; } })() || RD_DEFAULT;
+  let rdAngle = 0, rdSpinning = false;
+  const RD_COLORS = ['#8a5cf0', '#e01ec8', '#7fe0ee', '#ffd07a', '#8ee8a0', '#ff9a3c', '#ff5ad9', '#3b5bdb'];
+  function rdWheel() {
+    const cv = $('rdWheel'), g = cv.getContext('2d'), n = rdEntries.length || 1, r = cv.width / 2 - 8, cx = cv.width / 2;
     g.clearRect(0, 0, cv.width, cv.height);
-    entries.forEach((t, i) => {
-      const a0 = angle + i / n * Math.PI * 2, a1 = a0 + Math.PI * 2 / n;
-      g.beginPath(); g.moveTo(cx, cx); g.arc(cx, cx, r, a0, a1); g.closePath(); g.fillStyle = COLORS[i % COLORS.length]; g.fill(); g.strokeStyle = '#130a20'; g.lineWidth = 3; g.stroke();
-      const mid = (a0 + a1) / 2, left = Math.cos(mid) < 0;
-      g.save(); g.translate(cx, cx); g.rotate(left ? mid + Math.PI : mid); g.fillStyle = '#130a20'; g.font = "600 15px 'Pixelify Sans',sans-serif"; g.textAlign = left ? 'left' : 'right'; g.fillText(t.slice(0, 16), left ? -(r - 12) : r - 12, 5); g.restore();
+    rdEntries.forEach((t, i) => {
+      const a0 = rdAngle + i / n * Math.PI * 2, a1 = a0 + Math.PI * 2 / n;
+      g.beginPath(); g.moveTo(cx, cx); g.arc(cx, cx, r, a0, a1); g.closePath(); g.fillStyle = RD_COLORS[i % RD_COLORS.length]; g.fill(); g.strokeStyle = '#130a20'; g.lineWidth = 3; g.stroke();
+      const mid = (a0 + a1) / 2, left = Math.cos(mid) < 0;  // the left half is turned round so no text is upside down
+      g.save(); g.translate(cx, cx); g.rotate(left ? mid + Math.PI : mid); g.fillStyle = '#130a20'; g.font = "600 15px 'Pixelify Sans', sans-serif"; g.textAlign = left ? 'left' : 'right'; g.fillText(t.slice(0, 16), left ? -(r - 12) : r - 12, 5); g.restore();
     });
     g.beginPath(); g.arc(cx, cx, 16, 0, 7); g.fillStyle = '#130a20'; g.fill();
-    g.beginPath(); g.moveTo(cx + r, cx - 10); g.lineTo(cx + r + 14, cx); g.lineTo(cx + r, cx + 10); g.fillStyle = '#fff'; g.fill();  // repère à droite
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(cv.width - 4, cx); g.lineTo(cv.width - 26, cx - 11); g.lineTo(cv.width - 26, cx + 11); g.fill();  // pointer on the right
   }
-  function spin() {
-    if (spinning || !entries.length) return; spinning = true; pick.textContent = '';
-    const target = angle + Math.PI * 2 * (4 + Math.random() * 3), t0 = performance.now(), dur = 3200, from = angle;
+  function rdSpin() {
+    if (rdSpinning || !rdEntries.length) return;
+    rdSpinning = true; $('rdResult').textContent = '…';
+    const start = rdAngle, turn = Math.PI * 2 * (5 + Math.random() * 4), t0 = performance.now(), dur = 3800;
     const step = t => {
-      const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-      angle = from + (target - from) * e; drawWheel();
-      if (k < 1) requestAnimationFrame(step);
-      else { spinning = false; const n = entries.length, norm = ((-angle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2); pick.textContent = entries[Math.floor(norm / (Math.PI * 2 / n)) % n]; }
+      const k = Math.min(1, (t - t0) / dur), e = 1 - (1 - k) ** 4; rdAngle = start + turn * e; rdWheel();
+      if (k < 1) return requestAnimationFrame(step);
+      rdSpinning = false;
+      const n = rdEntries.length, at = ((-rdAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2), i = Math.floor(at / (Math.PI * 2) * n) % n;  // slice under the pointer (angle 0)
+      $('rdResult').textContent = rdEntries[i]; sfx('notify');
     };
-    requestAnimationFrame(step);
+    requestAnimationFrame(step); sfx('launch');
   }
-  spinBtn.onclick = spin; cv.onclick = spin;
-  list.oninput = () => { entries = list.value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 24); drawWheel(); clearTimeout(saveT); saveT = setTimeout(() => ctx.storage.set({entries}), 600); };
-
-  // --- dés ---
-  const dice = el('div', 'dice'), diceSum = el('div', 'hint'); diceSum.style.textAlign = 'center';
-  const dCount = el('input'); dCount.type = 'number'; dCount.value = '2'; dCount.min = '1'; dCount.max = '10';
-  const dFaces = el('select'); for (const f of [4, 6, 8, 10, 12, 20]) { const o = el('option', '', 'd' + f); o.value = f; dFaces.append(o); } dFaces.value = '6';
-  const dBtn = el('button', 'main', 'LANCER');
-  const diceCard = el('div', 'card'); const dr = el('div', 'row'); dr.append(dCount, dFaces, dBtn);
-  diceCard.append(el('span', 'label', 'DÉS'), dice, diceSum, dr);
-  dBtn.onclick = () => {
-    const count = Math.max(1, Math.min(10, +dCount.value || 1)), faces = +dFaces.value; let k = 0;
-    const roll = () => { const v = Array.from({length: count}, () => 1 + Math.floor(Math.random() * faces)); dice.replaceChildren(...v.map(n => el('div', 'die', String(n)))); diceSum.textContent = count > 1 ? 'Total : ' + v.reduce((a, b) => a + b, 0) : ''; if (++k < 10) setTimeout(roll, 60 + k * 12); };
+  function rdOpen() {
+    if (prefs.wheel?.length) rdEntries = prefs.wheel; else if (rdEntries !== RD_DEFAULT) neo.setSettings({wheel: rdEntries}).then(s => { prefs = s; });
+    $('rdList').value = rdEntries.join('\n'); rdWheel();
+  }
+  $('rdList').oninput = () => { rdEntries = $('rdList').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 24); clearTimeout(rdOpen.t); rdOpen.t = setTimeout(() => neo.setSettings({wheel: rdEntries}).then(s => { prefs = s; }), 600); rdWheel(); };
+  $('rdSpinBtn').onclick = rdSpin; $('rdWheel').onclick = rdSpin;
+  const DICE_DOTS = n => ({1: [[3, 3]], 2: [[1, 1], [5, 5]], 3: [[1, 1], [3, 3], [5, 5]], 4: [[1, 1], [5, 1], [1, 5], [5, 5]], 5: [[1, 1], [5, 1], [3, 3], [1, 5], [5, 5]], 6: [[1, 1], [5, 1], [1, 3], [5, 3], [1, 5], [5, 5]]})[n];
+  function rdDie(n, faces) {
+    const d = el('div', 'rdDie');
+    if (faces === 6) { const c = document.createElement('canvas'); c.width = c.height = 7; const g = c.getContext('2d'); g.fillStyle = '#130a20'; for (const [x, y] of DICE_DOTS(n)) g.fillRect(x, y, 1, 1); d.append(c); }
+    else d.textContent = n;
+    return d;
+  }
+  $('rdRoll').onclick = () => {
+    const count = +$('rdCount').value, faces = +$('rdFaces').value; let k = 0;
+    const roll = () => { const v = Array.from({length: count}, () => 1 + Math.floor(Math.random() * faces)); $('rdDice').replaceChildren(...v.map(n => rdDie(n, faces))); $('rdDiceSum').textContent = count > 1 ? 'Total : ' + v.reduce((a, b) => a + b, 0) : ''; if (++k < 10) setTimeout(roll, 60 + k * 12); else sfx('notify'); };
     roll();
   };
-
-  // --- pile ou face + nombre ---
-  const coin = el('div', 'coin', '?'), coinRes = el('div', 'res'), flip = el('button', 'main', 'LANCER');
-  const coinCard = el('div', 'card'); const cr = el('div', 'row'); cr.append(flip);
-  coinCard.append(el('span', 'label', 'PILE OU FACE'), coin, coinRes, cr);
-  flip.onclick = () => { coin.textContent = '…'; coinRes.textContent = ''; setTimeout(() => { const p = Math.random() < .5; coin.textContent = p ? 'P' : 'F'; coinRes.textContent = p ? 'Pile' : 'Face'; }, 700); };
-  const nMin = el('input'); nMin.type = 'number'; nMin.value = '1'; const nMax = el('input'); nMax.type = 'number'; nMax.value = '100';
-  const nRes = el('div', 'res'), nBtn = el('button', 'main', 'TIRER');
-  const numCard = el('div', 'card'); const nr = el('div', 'row'); nr.append(nMin, el('span', '', '→'), nMax, nBtn);
-  numCard.append(el('span', 'label', 'NOMBRE AU HASARD'), nRes, nr);
-  nBtn.onclick = () => { const a = Math.round(+nMin.value), b = Math.round(+nMax.value); if (!(b >= a)) return ctx.ui.toast('Le max doit être ≥ au min', true); nRes.textContent = String(a + Math.floor(Math.random() * (b - a + 1))); };
-
-  const wrap = el('div', 'rd'); wrap.append(wheelCard, diceCard, coinCard, numCard);
-  ctx.view.append(S, wrap);
-  ctx.onOpen(async () => { const d = await ctx.storage.get(); if (d && d.entries?.length) entries = d.entries; list.value = entries.join('\n'); drawWheel(); });
+  $('rdFlip').onclick = () => {
+    const c = $('rdCoin'); c.classList.remove('spin'); void c.offsetWidth; c.classList.add('spin'); $('rdCoinRes').textContent = '…';
+    setTimeout(() => { const pile = Math.random() < .5; c.textContent = pile ? 'P' : 'F'; $('rdCoinRes').textContent = pile ? 'Pile' : 'Face'; sfx('notify'); }, 900);
+  };
+  $('rdNum').onclick = () => { const a = Math.round(money($('rdMin').value)), b = Math.round(money($('rdMax').value)); if (!(b >= a)) return toast('Le maximum doit être plus grand que le minimum', true); $('rdNumRes').textContent = String(a + Math.floor(Math.random() * (b - a + 1))); sfx('notify'); };
+  // ---- fin ----
+  ctx.onOpen(() => { rdOpen(); });
 }
