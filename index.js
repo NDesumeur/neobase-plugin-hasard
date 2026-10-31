@@ -1,11 +1,30 @@
-// Hasard : ton appli d'origine, reprise telle quelle (HTML et code inchangés), livrée en plugin.
-// Elle demande l'accès complet : elle utilise les outils de NeoBase comme avant. NeoBase ne l'ouvre que si elle est signée.
+// Hasard : ton appli d'origine (HTML et code inchangés), livrée en plugin.
+// Ses données sont dans le dossier du plugin, que NeoBase sauvegarde (synchro cloud et sauvegardes) ; à la première ouverture elle reprend ce que tu avais dans NeoBase.
+// Elle demande l'accès complet pour utiliser les outils d'interface de NeoBase. NeoBase ne l'ouvre que si elle est signée.
 const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\"label\">Hasard</span></div>\n      <div class=\"rdMain\">\n        <div class=\"sysCard px rdWheelCard\"><span class=\"label\">Roue</span><canvas id=\"rdWheel\" width=\"320\" height=\"320\" title=\"Clic : tourner\"></canvas><div class=\"rdResult\" id=\"rdResult\">Clique sur la roue</div><button class=\"btn main px\" id=\"rdSpinBtn\">Tourner</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Choix de la roue (un par ligne)</span><textarea class=\"f\" id=\"rdList\" rows=\"10\" spellcheck=\"false\"></textarea></div>\n      </div>\n      <div class=\"sysGrid\">\n        <div class=\"sysCard px\"><span class=\"label\">Dés</span><div class=\"bdPlan\"><select class=\"f\" id=\"rdCount\"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select> dé(s) à <select class=\"f\" id=\"rdFaces\"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option><option>20</option><option>100</option></select> faces</div><div id=\"rdDice\"></div><div class=\"hint\" id=\"rdDiceSum\"></div><button class=\"btn px\" id=\"rdRoll\">Lancer</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Pile ou face</span><div id=\"rdCoin\" class=\"rdCoin\">?</div><div class=\"rdResult\" id=\"rdCoinRes\"></div><button class=\"btn px\" id=\"rdFlip\">Lancer la pièce</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Nombre au hasard</span><div class=\"bdPlan\">De <input class=\"f\" id=\"rdMin\" value=\"1\" inputmode=\"numeric\"> à <input class=\"f\" id=\"rdMax\" value=\"100\" inputmode=\"numeric\"></div><div class=\"rdResult\" id=\"rdNumRes\">—</div><button class=\"btn px\" id=\"rdNum\">Tirer</button></div>\n      </div>\n    </div>";
-export default function (ctx) {
+export default async function (ctx) {
   const view = ctx.view;
-  if (typeof el === 'undefined' || typeof neo === 'undefined') { view.textContent = "Ce plugin doit être approuvé par NeoBase pour s'ouvrir."; return; }
+  if (!ctx.host) { view.textContent = "Ce plugin doit être approuvé par NeoBase pour s'ouvrir."; return; }
+  const { el, toast, sfx, ask, newTab, pixIcon, PIX, WX } = ctx.host;
+  const folder = ctx.folder, legacy = ctx.legacy || {};
   view.innerHTML = HTML;
-  const $ = id => view.querySelector('#' + id);  // les identifiants de ta vue, sans toucher à ceux du reste de NeoBase
+  const $ = id => id === "randomApp" ? view : view.querySelector('#' + id);  // les identifiants de ta vue, sans toucher à ceux du reste de NeoBase
+  const doc = async n => { try { return await folder.read(n); } catch { return null; } };
+  const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const money = s => { const v = parseFloat(String(s).replace(/[\s  €]/g, '').replace(',', '.')); return isFinite(v) ? Math.round(v * 100) / 100 : NaN; };
+  let prefs = await doc('prefs');
+  if (prefs == null) {  // première ouverture : tu retrouves tes réglages d'avant
+    prefs = {}; const old = legacy.settings ? await legacy.settings().catch(() => ({})) : {};
+    for (const k of ["wheel"]) if (old[k] !== undefined && old[k] !== '' && !(Array.isArray(old[k]) && !old[k].length)) prefs[k] = old[k];
+    if (Object.keys(prefs).length) await folder.write('prefs', prefs);
+  }
+  const neo = { win: a => ctx.host.win?.(a), getSettings: async () => prefs, setSettings: async s => { Object.assign(prefs, s); await folder.write('prefs', prefs); return prefs; } };
+  const __ls = (await doc('local')) || {}; let __lsT = null, __lsNew = false;
+  for (const k of ["neoWheel"]) if (__ls[k] === undefined) { const v = legacy.local ? legacy.local(k) : null; if (v != null) { __ls[k] = v; __lsNew = true; } }  // première ouverture : tu retrouves ce que tu avais
+  const __lsSave = () => { clearTimeout(__lsT); __lsT = setTimeout(() => folder.write('local', __ls).catch(() => {}), 400); };
+  if (__lsNew) __lsSave();
+  const localStorage = new Proxy(__ls, { get: (t, k) => k === 'getItem' ? (x => t[x] ?? null) : k === 'setItem' ? ((x, v) => { t[x] = String(v); __lsSave(); }) : t[k], set: (t, k, v) => { t[k] = String(v); __lsSave(); return true; } });
   // ---- ton code d'origine ----
   /* ---------- Hasard app: a wheel with your own entries, dice, coin, number and draw ---------- */
   // the wheel's choices are in the settings (synced); the ones kept on this PC before come along the first time
