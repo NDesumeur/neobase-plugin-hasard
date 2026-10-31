@@ -2,11 +2,27 @@
 // Ses données sont dans le dossier du plugin, que NeoBase sauvegarde (synchro cloud et sauvegardes) ; à la première ouverture elle reprend ce que tu avais dans NeoBase.
 // Elle demande l'accès complet pour utiliser les outils d'interface de NeoBase. NeoBase ne l'ouvre que si elle est signée.
 const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\"label\">Hasard</span></div>\n      <div class=\"rdMain\">\n        <div class=\"sysCard px rdWheelCard\"><span class=\"label\">Roue</span><canvas id=\"rdWheel\" width=\"320\" height=\"320\" title=\"Clic : tourner\"></canvas><div class=\"rdResult\" id=\"rdResult\">Clique sur la roue</div><button class=\"btn main px\" id=\"rdSpinBtn\">Tourner</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Choix de la roue (un par ligne)</span><textarea class=\"f\" id=\"rdList\" rows=\"10\" spellcheck=\"false\"></textarea></div>\n      </div>\n      <div class=\"sysGrid\">\n        <div class=\"sysCard px\"><span class=\"label\">Dés</span><div class=\"bdPlan\"><select class=\"f\" id=\"rdCount\"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select> dé(s) à <select class=\"f\" id=\"rdFaces\"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option><option>20</option><option>100</option></select> faces</div><div id=\"rdDice\"></div><div class=\"hint\" id=\"rdDiceSum\"></div><button class=\"btn px\" id=\"rdRoll\">Lancer</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Pile ou face</span><div id=\"rdCoin\" class=\"rdCoin\">?</div><div class=\"rdResult\" id=\"rdCoinRes\"></div><button class=\"btn px\" id=\"rdFlip\">Lancer la pièce</button></div>\n        <div class=\"sysCard px\"><span class=\"label\">Nombre au hasard</span><div class=\"bdPlan\">De <input class=\"f\" id=\"rdMin\" value=\"1\" inputmode=\"numeric\"> à <input class=\"f\" id=\"rdMax\" value=\"100\" inputmode=\"numeric\"></div><div class=\"rdResult\" id=\"rdNumRes\">—</div><button class=\"btn px\" id=\"rdNum\">Tirer</button></div>\n      </div>\n    </div>";
+/*CSS-MOVED*/ const CSS = `.rdMain{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
+.rdWheelCard{align-items:center}
+#rdWheel{cursor:var(--cp,pointer)}
+.rdResult{font:16px var(--title);color:#fff;min-height:24px;text-align:center}
+#rdList{font-size:16px;min-height:260px;resize:vertical}
+#rdDice{display:flex;flex-wrap:wrap;gap:10px;min-height:56px}
+.rdDie{width:52px;height:52px;background:#f3eaff;display:grid;place-items:center;font:16px var(--title);color:#130a20;box-shadow:0 0 0 3px var(--line2)}
+.rdDie canvas{width:42px;height:42px;image-rendering:pixelated}
+.rdCoin{width:80px;height:80px;margin:0 auto;border-radius:50%;background:radial-gradient(#ffe7a8,#e8a838);display:grid;place-items:center;font:24px var(--title);color:#7a3c10;box-shadow:0 0 0 4px #b8641c}
+.rdCoin.spin{animation:coin .9s steps(12)}
+.bdPlan input.f#rdMin,.bdPlan input.f#rdMax{width:90px}
+.bdPlan{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:16px;color:var(--lilac)}
+.bdPlan .f{width:110px;font-size:15px;padding:7px 10px}
+.bdPlan select.f{width:160px}
+`;  // le style de ce plugin (il utilise les variables du thème de NeoBase)
 export default async function (ctx) {
   const view = ctx.view;
   if (!ctx.host) { view.textContent = "Ce plugin doit être approuvé par NeoBase pour s'ouvrir."; return; }
   const { el, toast, sfx, ask, newTab, pixIcon, PIX, WX } = ctx.host;
   const folder = ctx.folder, legacy = ctx.legacy || {};
+  ctx.host.addStyle(CSS);
   view.innerHTML = HTML;
   const $ = id => id === "randomApp" ? view : view.querySelector('#' + id);  // les identifiants de ta vue, sans toucher à ceux du reste de NeoBase
   const doc = async n => { try { return await folder.read(n); } catch { return null; } };

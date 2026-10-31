@@ -1,7 +1,7 @@
 {
   "id": "neobase.hasard",
   "name": "Hasard",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "NDesumeur",
   "description": "Une roue avec tes choix, des dés, pile ou face et un tirage de nombre.",
   "icon": "icon.png",

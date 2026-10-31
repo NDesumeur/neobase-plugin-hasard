@@ -1,9 +1,0 @@
-{
-  "pluginId": "neobase.hasard",
-  "repo": "NDesumeur/neobase-plugin-hasard",
-  "version": "1.2.0",
-  "sha256": "a3124663ecb40436d30678c0dbe729b04c6d0baed1ec73ab6a3d72f446fb712f",
-  "approvedAt": "2026-10-31T04:25:54.148Z",
-  "neobase": ">=4.0.0",
-  "signature": "QdCOI7Zk3r+oo+C2srr01DXCFbXLTBElMfCoFx2LBdoFk14qTkRpSZa0DgmJ0LjiUpo6Wle42+4/Pz4sp0SQAg=="
-}
