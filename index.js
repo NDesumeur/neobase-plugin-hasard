@@ -37,7 +37,7 @@ export default async function (ctx) {
   }
   const neo = { win: a => ctx.host.win?.(a), getSettings: async () => prefs, setSettings: async s => { Object.assign(prefs, s); await folder.write('prefs', prefs); return prefs; } };
   const __ls = (await doc('local')) || {}; let __lsT = null, __lsNew = false;
-  for (const k of ["neoWheel"]) if (__ls[k] === undefined) { const v = legacy.local ? legacy.local(k) : null; if (v != null) { __ls[k] = v; __lsNew = true; } }  // première ouverture : tu retrouves ce que tu avais
+  for (const k of ["neoWheel"]) if (__ls[k] === undefined) { const v = legacy.local ? await legacy.local(k) : null; if (v != null) { __ls[k] = v; __lsNew = true; } }  // première ouverture : tu retrouves ce que tu avais
   const __lsSave = () => { clearTimeout(__lsT); __lsT = setTimeout(() => folder.write('local', __ls).catch(() => {}), 400); };
   if (__lsNew) __lsSave();
   const localStorage = new Proxy(__ls, { get: (t, k) => k === 'getItem' ? (x => t[x] ?? null) : k === 'setItem' ? ((x, v) => { t[x] = String(v); __lsSave(); }) : t[k], set: (t, k, v) => { t[k] = String(v); __lsSave(); return true; } });
