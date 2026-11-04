@@ -1,7 +1,8 @@
 # Hasard
 
-Pour laisser faire le hasard dans NeoBase : une roue avec tes propres choix, des dés, pile ou face,
-et un tirage de nombre.
+Une roue avec tes choix, des dés, pile ou face et un tirage de nombre.
+
+Ses données sont rangées dans le dossier du plugin, que NeoBase sauvegarde (synchro cloud comprise). Au premier lancement, il reprend ce que tu avais déjà dans NeoBase.
 
 ## Installer
 
