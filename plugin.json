@@ -10,6 +10,8 @@
   "neobase": ">=4.0.0",
   "type": "app",
   "category": "Jeux",
+  "syncMode": "fusion",
+  "syncInfo": "Tes listes (roues, tirages).",
   "mobile": true,
   "system": false,
   "dependencies": {},
