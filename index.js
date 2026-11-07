@@ -5,12 +5,14 @@ const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\
 /*CSS-MOVED*/ const CSS = `.rdMain{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
 .rdWheelCard{align-items:center}
 #rdWheel{cursor:var(--cp,pointer)}
-.rdResult{font:16px var(--title);color:#fff;min-height:24px;text-align:center}
-#rdList{font-size:16px;min-height:260px;resize:vertical}
+.rdResult{font:16px var(--title);color:#fff;min-height:24px;text-align:center;text-shadow:3px 3px 0 #000}
+#rdWheel{image-rendering:pixelated;width:320px;height:320px}
+.rdDie{box-shadow:0 0 0 3px #130a20,inset -4px -4px 0 #c9bdf0,4px 4px 0 3px rgba(0,0,0,.4)}
+#rdList{font-size:17px;line-height:28px;min-height:260px;resize:vertical;color:#2b2350;padding:4px 12px 4px 40px;border:0;box-shadow:0 0 0 3px #1b1230,6px 6px 0 3px rgba(0,0,0,.4);background:linear-gradient(90deg,transparent 28px,#e0707f 28px 30px,transparent 30px),repeating-linear-gradient(to bottom,transparent 0 26px,#a9bde0 26px 28px),#f3e9cf;background-attachment:local}
 #rdDice{display:flex;flex-wrap:wrap;gap:10px;min-height:56px}
 .rdDie{width:52px;height:52px;background:#f3eaff;display:grid;place-items:center;font:16px var(--title);color:#130a20;box-shadow:0 0 0 3px var(--line2)}
 .rdDie canvas{width:42px;height:42px;image-rendering:pixelated}
-.rdCoin{width:80px;height:80px;margin:0 auto;border-radius:50%;background:radial-gradient(#ffe7a8,#e8a838);display:grid;place-items:center;font:24px var(--title);color:#7a3c10;box-shadow:0 0 0 4px #b8641c}
+.rdCoin{width:80px;height:80px;margin:0 auto;display:grid;place-items:center;font:22px var(--title);color:#7a3c10;text-shadow:2px 2px 0 #ffe7a8;image-rendering:pixelated;background:no-repeat center/100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' shape-rendering='crispEdges'%3E%3Cpath fill='%237a3c10' d='M6 0h8v2h2v2h2v2h2v8h-2v2h-2v2h-2v2H6v-2H4v-2H2v-2H0V6h2V4h2V2h2z'/%3E%3Cpath fill='%23e8a838' d='M6 2h8v2h2v2h2v8h-2v2h-2v2H6v-2H4v-2H2V6h2V4h2z'/%3E%3Cpath fill='%23ffd07a' d='M6 3h8v1h1v1h1v2h-1V6h-1V5h-1V4H6v1H5v1H4v2H3V6h1V5h1V4h1z'/%3E%3Cpath fill='%23b8641c' d='M16 12h1v2h-1v1h-1v1h-1v1H6v-1h8v-1h1v-1h1z'/%3E%3C/svg%3E")}
 .rdCoin.spin{animation:coin .9s steps(12)}
 .bdPlan input.f#rdMin,.bdPlan input.f#rdMax{width:90px}
 .bdPlan{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:16px;color:var(--lilac)}
@@ -48,17 +50,33 @@ export default async function (ctx) {
   let rdEntries = (() => { try { return JSON.parse(localStorage.neoWheel); } catch { return null; } })() || RD_DEFAULT;
   let rdAngle = 0, rdSpinning = false;
   const RD_COLORS = ['#8a5cf0', '#e01ec8', '#7fe0ee', '#ffd07a', '#8ee8a0', '#ff9a3c', '#ff5ad9', '#3b5bdb'];
+  const RD_PX = 80, rdBuf = document.createElement('canvas'), RD_RGB = RD_COLORS.map(c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)));
+  rdBuf.width = rdBuf.height = RD_PX;
   function rdWheel() {
-    const cv = $('rdWheel'), g = cv.getContext('2d'), n = rdEntries.length || 1, r = cv.width / 2 - 8, cx = cv.width / 2;
-    g.clearRect(0, 0, cv.width, cv.height);
+    const cv = $('rdWheel'), g = cv.getContext('2d'), n = rdEntries.length || 1, S = cv.width / RD_PX, R = RD_PX / 2 - 2, c0 = RD_PX / 2, TAU = Math.PI * 2;
+    // pixel by pixel on an 80 px canvas, then enlarged without smoothing: hard edges, a 1 px dark outline between parts
+    const b = rdBuf.getContext('2d'), img = b.createImageData(RD_PX, RD_PX), d = img.data;
+    for (let y = 0; y < RD_PX; y++) for (let x = 0; x < RD_PX; x++) {
+      const dx = x + .5 - c0, dy = y + .5 - c0, dist = Math.hypot(dx, dy), o = (y * RD_PX + x) * 4;
+      if (dist > R + 1) continue;
+      let col = [19, 10, 32];
+      if (dist <= R && dist > 6) {
+        const a = ((Math.atan2(dy, dx) - rdAngle) % TAU + TAU) % TAU, f = a / TAU * n, i = Math.floor(f) % n, edge = Math.min(f - Math.floor(f), Math.ceil(f) - f) * TAU / n * dist;
+        if (edge > .7) { col = RD_RGB[i % RD_RGB.length]; if (dist > R - 2) col = col.map(v => v * .72); else if (dist < 12) col = col.map(v => Math.min(255, v * 1.12)); }
+      } else if (dist <= 4) col = [243, 234, 255];
+      d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
+    }
+    b.putImageData(img, 0, 0);
+    g.clearRect(0, 0, cv.width, cv.height); g.imageSmoothingEnabled = false; g.drawImage(rdBuf, 0, 0, cv.width, cv.height);
     rdEntries.forEach((t, i) => {
-      const a0 = rdAngle + i / n * Math.PI * 2, a1 = a0 + Math.PI * 2 / n;
-      g.beginPath(); g.moveTo(cx, cx); g.arc(cx, cx, r, a0, a1); g.closePath(); g.fillStyle = RD_COLORS[i % RD_COLORS.length]; g.fill(); g.strokeStyle = '#130a20'; g.lineWidth = 3; g.stroke();
-      const mid = (a0 + a1) / 2, left = Math.cos(mid) < 0;  // the left half is turned round so no text is upside down
-      g.save(); g.translate(cx, cx); g.rotate(left ? mid + Math.PI : mid); g.fillStyle = '#130a20'; g.font = "600 15px 'Pixelify Sans', sans-serif"; g.textAlign = left ? 'left' : 'right'; g.fillText(t.slice(0, 16), left ? -(r - 12) : r - 12, 5); g.restore();
+      const mid = rdAngle + (i + .5) / n * TAU, left = Math.cos(mid) < 0;  // the left half is turned round so no text is upside down
+      g.save(); g.translate(cv.width / 2, cv.width / 2); g.rotate(left ? mid + Math.PI : mid); g.font = "600 15px 'Pixelify Sans', sans-serif"; g.textAlign = left ? 'left' : 'right';
+      const tx = left ? -(R * S - 14) : R * S - 14; g.fillStyle = 'rgba(255,255,255,.55)'; g.fillText(t.slice(0, 16), tx + 1, 6); g.fillStyle = '#130a20'; g.fillText(t.slice(0, 16), tx, 5); g.restore();
     });
-    g.beginPath(); g.arc(cx, cx, 16, 0, 7); g.fillStyle = '#130a20'; g.fill();
-    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(cv.width - 4, cx); g.lineTo(cv.width - 26, cx - 11); g.lineTo(cv.width - 26, cx + 11); g.fill();  // pointer on the right
+    // the pointer on the right, in pixels
+    const P = ['#.....', '###...', '#####.', '######', '#####.', '###...', '#.....'], px0 = cv.width - 6 * 4 - 2, py0 = cv.width / 2 - 14;
+    P.forEach((row, j) => [...row].forEach((ch, k) => { if (ch === '#') { g.fillStyle = '#130a20'; g.fillRect(px0 + (5 - k) * 4 - 2, py0 + j * 4 - 2, 8, 8); } }));
+    P.forEach((row, j) => [...row].forEach((ch, k) => { if (ch === '#') { g.fillStyle = j === 3 || k === 0 ? '#ffd07a' : '#fff'; g.fillRect(px0 + (5 - k) * 4, py0 + j * 4, 4, 4); } }));
   }
   function rdSpin() {
     if (rdSpinning || !rdEntries.length) return;
